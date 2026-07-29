@@ -20,10 +20,10 @@
 
 - Linux（BlueZ 蓝牙栈）
 - Python 3.7+
-- [PyBluez2](https://pypi.org/project/PyBlueZ2/)
+- [PyBluez](https://pypi.org/project/PyBluez/) 0.30
 
 ```bash
-pip install pybluez2
+pip install PyBluez==0.30
 ```
 
 `--scan` 依赖 `bluetoothctl`，不可用时降级但 `--mac` 直连仍可用。

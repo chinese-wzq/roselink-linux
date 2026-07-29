@@ -181,7 +181,7 @@ def _import_bluetooth():
         import bluetooth
         return bluetooth
     except ImportError:
-        sys.exit("错误: 未找到 PyBluez。请先安装: pip install pybluez2")
+        sys.exit("错误: 未找到 PyBluez。请先安装: pip install PyBluez==0.30")
 
 
 def _rose_tag(name):
