@@ -121,8 +121,6 @@ python3 roselink_writer.py --mac AA:BB:CC:DD:EE:FF multi-device on
 基于 flet 的桌面控制台，把只读状态、写操作和 EQ 编辑集成到一个界面，功能与 CLI 完全对应，适合日常使用。
 
 ```bash
-cd reader
-source .venv/bin/activate
 python3 roselink_gui.py
 ```
 
