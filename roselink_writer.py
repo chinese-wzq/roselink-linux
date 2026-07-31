@@ -19,7 +19,7 @@
 
 用法示例:
     # 自测（离线，无需设备）
-    python3 roselink_writer.py --selftest
+    python3 selftest.py
 
     # 演练（不发送，仅打印各帧 hex + 解码意图）
     python3 roselink_writer.py --mac AA:BB:CC:DD:EE:FF eq pop --dry-run
@@ -147,7 +147,11 @@ def execute_write(args, op_id, op, op_frames, intents):
     # -- 真机：连接 -------------------------------------------------------
     conn = reader.Connection(args.mac, channel=args.channel,
                              timeout=1.0, raw=args.raw)
-    conn.connect()
+    try:
+        conn.connect(connect_timeout=getattr(args, "connect_timeout", 15.0))
+    except Exception as ex:
+        print("✗ %s" % ex, file=sys.stderr)
+        return 1
     sess = WriterSession(conn)
     try:
         # 0. 出仓硬前置（LDAC 02 2b、多设备 02 32 均需两耳出仓）
@@ -208,6 +212,11 @@ def execute_write(args, op_id, op, op_frames, intents):
         if reboot:
             print("ℹ 此操作会触发耳机重启；连接可能断开属正常现象。")
         return 0
+    except Exception as ex:
+        # 发送/前置检查阶段的蓝牙异常（如设备中途断开）也要走用户可控的
+        # 错误路径，不能在业务代码之外产生 traceback。
+        print("✗ 写入过程出错: %s" % ex, file=sys.stderr)
+        return 1
     finally:
         conn.close()
 
@@ -270,6 +279,8 @@ def _parse_args(argv):
     p.add_argument("--mac", help="目标耳机 MAC 地址（实写必填）")
     p.add_argument("--channel", type=int, default=reader.SPP_CHANNEL,
                    help="RFCOMM 通道（默认 6）")
+    p.add_argument("--connect-timeout", type=float, default=15.0,
+                   help="连接超时秒数（默认 15）")
     p.add_argument("--dry-run", action="store_true",
                    help="仅打印各帧 hex + 解码意图，不发送并退出")
     p.add_argument("--force", action="store_true",
@@ -369,14 +380,20 @@ def main(argv=None):
     if not args.op:
         # 无操作：打印帮助与可用操作
         _print_list()
-        print("\n用 --selftest 自测；用 <操作> 子命令执行（先 --dry-run 演练）。")
+        print("\n用 python3 selftest.py 自测；用 <操作> 子命令执行（先 --dry-run 演练）。")
         return 0
 
     # 解析子命令参数为 op.build() 关键字
     if args.op == "gesture" and (args.pos is None or args.action is None):
         print("✗ gesture 需要 pos 和 action；请先用 --list-touch 查看可用值。")
         return 2
-    kwargs = _kwargs_for_op(args, args.op)
+    try:
+        kwargs = _kwargs_for_op(args, args.op)
+    except (ValueError, argparse.ArgumentTypeError):
+        # 非法 hex / 超出 00~ff 的统一错误路径，禁止 traceback。
+        print("✗ gesture 的 pos/action 需为 00~ff 的 hex（如 01 03，"
+              "可先 --list-touch 查看）。")
+        return 2
     op = wproto.WRITE_OPS[args.op]
     try:
         op_frames = op["build"](**kwargs)
@@ -411,13 +428,8 @@ def _kwargs_for_op(args, op_id):
     if op_id in ("game-mode", "touch"):
         return {"state": args.state}
     if op_id == "gesture":
-        try:
-            pos = _hex_byte(args.pos, "pos")
-            action = _hex_byte(args.action, "action")
-        except ValueError:
-            print("✗ gesture 的 pos/action 需为 hex（如 01 03）。")
-            raise
-        return {"pos": pos, "action": action}
+        return {"pos": _hex_byte(args.pos, "pos"),
+                "action": _hex_byte(args.action, "action")}
     if op_id == "language":
         return {"lang": args.lang}
     if op_id == "prompt-tone":

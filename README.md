@@ -14,16 +14,18 @@
 | `roselink_reader.py` | 只读 CLI — 连接耳机、查询全部能力与状态、持续监听、JSON 输出 |
 | `rs_writer.py` | 写命令帧构造器 — 全部已确认写操作的线格式帧，带参数校验与越界拦截 |
 | `roselink_writer.py` | 写操作 CLI — 通过子命令修改设备设置，带 ACK 确认、出仓前置、重启确认 |
-| `selftest.py` | 离线自测（76 项），无需蓝牙设备 |
+| `roselink_gui.py` | flet 桌面 GUI — 可视化连接与全部设置（EQ 曲线编辑器、降噪/手势/查找耳机等） |
+| `selftest.py` | 离线自测（92 项），无需蓝牙设备 |
 
 ## 环境要求
 
 - Linux（BlueZ 蓝牙栈）
 - Python 3.7+
 - [PyBluez](https://pypi.org/project/PyBluez/) 0.30
+- flet（仅 GUI 需要）
 
 ```bash
-pip install PyBluez==0.30
+pip install PyBluez==0.30 flet
 ```
 
 `--scan` 依赖 `bluetoothctl`，不可用时降级但 `--mac` 直连仍可用。
@@ -114,13 +116,40 @@ python3 roselink_writer.py --mac AA:BB:CC:DD:EE:FF multi-device on
 
 写命令发送后等待 C2H ACK 帧，ACK 数量匹配发送帧数才判定为成功。
 
+## 图形界面（`roselink_gui.py`）
+
+基于 flet 的桌面控制台，把只读状态、写操作和 EQ 编辑集成到一个界面，功能与 CLI 完全对应，适合日常使用。
+
+```bash
+cd reader
+source .venv/bin/activate
+python3 roselink_gui.py
+```
+
+窗口布局为「设备信息 + 电量卡片 + 四张功能卡片」：
+
+| 区域 | 功能 |
+|---|---|
+| 顶部设备栏 | 已配对设备下拉选择、连接/断开切换按钮；未连接时每 10 秒自动扫描设备 |
+| 电量卡片 | 左耳/右耳/充电仓电量进度条，低电红色预警，在仓充电与仓电量缓存标记 |
+| 降噪控制 | ANC 模式、降噪等级（轻/中/深）、通透等级（舒适/人声/标准）、降噪触控循环 |
+| 音频设置 | EQ 预设切换、自定义 EQ 10 段曲线编辑器、LDAC 开关、游戏模式 |
+| 交互设置 | 触控开关、左右耳 8 个手势下拉配置（全部应用/重置）、语音语言、提示音音量、查找耳机左右耳独立按钮 |
+| 连接设置 | 多设备连接开关 |
+
+自定义 EQ 支持鼠标拖拽手柄实时绘制曲线，10 段增益可保存为命名预设，预设文件存放在 `~/.config/roselink/eq_presets.json`。
+
+安全机制与 CLI 一致：LDAC 与多设备开关写前检查双耳出仓（电量 bit7），重启类操作需弹窗二次确认；写操作实时等待设备 ACK，失败会在底部状态栏提示。
+
+GUI 直接复用 `roselink_reader` 的连接、拆帧与解码逻辑（后台 watch 线程 + 主线程事件循环），不依赖 CLI 进程，也不需要解析 CLI 的 JSON 输出。
+
 ## 离线自测
 
 ```bash
 python3 selftest.py
 ```
 
-76 项离线测试覆盖：校验和、帧解析（含噪声/data 内 0xAA/拼接）、编解码器往返、写操作参数校验、边界/类型异常输入等。**无需蓝牙设备。**
+92 项离线测试覆盖：校验和、帧解析（含噪声/data 内 0xAA/拼接）、编解码器往返、写操作参数校验、边界/类型异常输入，以及 fake socket 下的 JSON、连接生命周期（含 EALREADY 自动重试）、GUI 写入、EQ/查找状态、CLI 异常边界和扫描线程生命周期回归。**无需蓝牙设备。**
 
 ## 免责声明
 
