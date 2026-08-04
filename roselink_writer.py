@@ -145,7 +145,7 @@ def execute_write(args, op_id, op, op_frames, intents):
         return 0
 
     # -- 真机：连接 -------------------------------------------------------
-    conn = reader.Connection(args.mac, channel=args.channel,
+    conn = reader.Connection(args.mac,
                              timeout=1.0, raw=args.raw)
     try:
         conn.connect(connect_timeout=getattr(args, "connect_timeout", 15.0))
@@ -277,8 +277,6 @@ def _parse_args(argv):
         description="RoseLink 写操作 CLI（修改设备设置；reader 仍保持只读）")
     # 全局参数
     p.add_argument("--mac", help="目标耳机 MAC 地址（实写必填）")
-    p.add_argument("--channel", type=int, default=reader.SPP_CHANNEL,
-                   help="RFCOMM 通道（默认 6）")
     p.add_argument("--connect-timeout", type=float, default=15.0,
                    help="连接超时秒数（默认 15）")
     p.add_argument("--dry-run", action="store_true",

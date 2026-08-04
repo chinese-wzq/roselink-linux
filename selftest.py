@@ -581,7 +581,7 @@ def _test_regressions():
     writer.reader.Connection = BoomConn
     output = io.StringIO()
     try:
-        args = SimpleNamespace(mac="00:00:00:00:00:00", channel=6,
+        args = SimpleNamespace(mac="00:00:00:00:00:00",
                                connect_timeout=1.0, raw=False,
                                dry_run=False, force=True)
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):

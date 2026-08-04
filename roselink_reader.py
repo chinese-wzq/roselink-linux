@@ -25,7 +25,11 @@ import time
 
 import rs_protocol as proto
 
-SPP_CHANNEL = 6  # docs: 设备控制走 SPP 通道 6
+# 通道 6 是耳机固件在 SDP 服务记录里注册的固定值（HCI 抓包 +
+# RFCOMM PN 协商确认）。App 通过 UUID 00001101-0000-1000-8000-
+# 00805f9b34fb 连接，SDP 解析结果同为通道 6。勿改：其他型号
+# 若注册不同通道，仅需在此调整并同步注释。
+SPP_CHANNEL = 6
 
 # BlueZ 在系统/其他客户端正在连接同一设备时，RFCOMM connect 会返回
 # EALREADY（errno 114, "Operation already in progress"），属瞬时状态，
@@ -494,7 +498,7 @@ class Connection:
 # 读取流程
 # ---------------------------------------------------------------------------
 def do_read(args):
-    conn = Connection(args.mac, channel=args.channel,
+    conn = Connection(args.mac,
                       timeout=1.0, raw=args.raw and not args.json)
     st = DeviceState()
     st.mac = args.mac
@@ -563,8 +567,6 @@ def main(argv=None):
         description="RoseLink 只读 CLI（仅读取能力与状态，不修改任何设置）")
     p.add_argument("--scan", action="store_true", help="扫描附近蓝牙设备")
     p.add_argument("--mac", help="目标耳机 MAC 地址，连接并读取")
-    p.add_argument("--channel", type=int, default=SPP_CHANNEL,
-                   help="RFCOMM 通道（默认 6）")
     p.add_argument("--connect-timeout", type=float, default=15.0,
                    help="连接超时秒数（默认 15）")
     p.add_argument("--watch", action="store_true",
